@@ -53,8 +53,7 @@ auto to_local_hash(int flat_size, Element el, int offset) noexcept -> uint64_t {
 }
 
 auto to_local_inventory_hash(int flat_size, Element el, int count) noexcept -> uint64_t {
-    uint64_t seed = (flat_size * to_underlying(el)) + count;    // NOLINT(*-magic-numbers)
-    seed += 0xFFFFFFFF;
+    uint64_t seed = (flat_size * kNumElements) + (flat_size * to_underlying(el)) + count;    // NOLINT(*-magic-numbers)
     uint64_t result = seed + SPLIT64_C1;
     result = (result ^ (result >> SPLIT64_S1)) * SPLIT64_C2;
     result = (result ^ (result >> SPLIT64_S2)) * SPLIT64_C3;
