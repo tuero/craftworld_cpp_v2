@@ -98,6 +98,7 @@ CraftWorldGameState::CraftWorldGameState(const std::string &board_str) {
 
         grid.push_back(static_cast<Element>(el_idx));
     }
+    assert(static_cast<int>(grid.size()) == rows * cols);
 
     // Set initial hash for game world
     int flat_size = rows * cols;
@@ -534,6 +535,7 @@ void CraftWorldGameState::RemoveFromInventory(Element element, int count) noexce
 void CraftWorldGameState::AddToInventory(Element element, int count) noexcept {
     // Increment item `count` times and change game state hash
     int flat_size = rows * cols;
+    assert(element != Element::kEmpty);
     for (int i = 0; i < count; ++i) {
         ++inventory[element];
         hash ^= to_local_inventory_hash(flat_size, element, inventory[element]);
