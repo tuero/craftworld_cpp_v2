@@ -53,7 +53,8 @@ auto to_local_hash(int flat_size, Element el, int offset) noexcept -> uint64_t {
 }
 
 auto to_local_inventory_hash(int flat_size, Element el, int count) noexcept -> uint64_t {
-    uint64_t seed = (flat_size * to_underlying(el)) + count + 0x9E3779B97f4A7C15;    // NOLINT(*-magic-numbers)
+    uint64_t seed = (flat_size * to_underlying(el)) + count;    // NOLINT(*-magic-numbers)
+    seed += 0xFFFFFFFF;
     uint64_t result = seed + SPLIT64_C1;
     result = (result ^ (result >> SPLIT64_S1)) * SPLIT64_C2;
     result = (result ^ (result >> SPLIT64_S2)) * SPLIT64_C3;
@@ -138,8 +139,9 @@ auto CraftWorldGameState::operator!=(const CraftWorldGameState &other) const noe
 void CraftWorldGameState::RemoveItemFromBoard(int index) noexcept {
     Element el = grid[index];
     auto flat_size = rows * cols;
-    grid[index] = Element::kEmpty;
     hash ^= to_local_hash(flat_size, el, index);
+    grid[index] = Element::kEmpty;
+    hash ^= to_local_hash(flat_size, Element::kEmpty, index);
 }
 
 void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
@@ -147,13 +149,16 @@ void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
     auto new_idx = IndexFromAction(agent_idx, action);
     int flat_size = rows * cols;
     if (InBounds(agent_idx, action) && grid[new_idx] == Element::kEmpty) {
+        // Undo hash
         hash ^= to_local_hash(flat_size, Element::kAgent, agent_idx);
         hash ^= to_local_hash(flat_size, Element::kEmpty, new_idx);
+        // Change hash
+        hash ^= to_local_hash(flat_size, Element::kAgent, new_idx);
+        hash ^= to_local_hash(flat_size, Element::kEmpty, agent_idx);
+        // Move
         grid[new_idx] = Element::kAgent;
         grid[agent_idx] = Element::kEmpty;
         agent_idx = new_idx;
-        hash ^= to_local_hash(flat_size, Element::kAgent, new_idx);
-        hash ^= to_local_hash(flat_size, Element::kEmpty, agent_idx);
     }
 }
 
