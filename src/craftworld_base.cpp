@@ -1,3 +1,5 @@
+#define _GLIBCXX_DEBUG 1
+
 #include "craftworld_base.h"
 
 #include <algorithm>
