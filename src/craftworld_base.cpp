@@ -536,6 +536,10 @@ void CraftWorldGameState::AddToInventory(Element element, int count) noexcept {
     // Increment item `count` times and change game state hash
     int flat_size = rows * cols;
     assert(element != Element::kEmpty);
+    if (element == Element::kEmpty) {
+        std::cout << "eerr" << std::endl;
+        std::exit(1);
+    }
     for (int i = 0; i < count; ++i) {
         ++inventory[element];
         hash ^= to_local_inventory_hash(flat_size, element, inventory[element]);
