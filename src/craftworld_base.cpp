@@ -1,4 +1,3 @@
-#define _GLIBCXX_DEBUG 1
 
 #include "craftworld_base.h"
 
@@ -106,7 +105,7 @@ CraftWorldGameState::CraftWorldGameState(const std::string &board_str) {
     int flat_size = rows * cols;
     hash = 0;
     for (int i = 0; i < flat_size; ++i) {
-        hash ^= to_local_hash(flat_size, grid[i], i);
+        hash ^= to_local_hash(flat_size, grid.at(i), i);
     }
 }
 
@@ -139,10 +138,10 @@ auto CraftWorldGameState::operator!=(const CraftWorldGameState &other) const noe
 // ---------------------------------------------------------------------------
 
 void CraftWorldGameState::RemoveItemFromBoard(int index) noexcept {
-    Element el = grid[index];
+    Element el = grid.at(index);
     auto flat_size = rows * cols;
     hash ^= to_local_hash(flat_size, el, index);
-    grid[index] = Element::kEmpty;
+    grid.at(index) = Element::kEmpty;
     hash ^= to_local_hash(flat_size, Element::kEmpty, index);
 }
 
@@ -150,7 +149,7 @@ void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
     // Move if in bound and empty tile
     auto new_idx = IndexFromAction(agent_idx, action);
     int flat_size = rows * cols;
-    if (InBounds(agent_idx, action) && grid[new_idx] == Element::kEmpty) {
+    if (InBounds(agent_idx, action) && grid.at(new_idx) == Element::kEmpty) {
         // Undo hash
         hash ^= to_local_hash(flat_size, Element::kAgent, agent_idx);
         hash ^= to_local_hash(flat_size, Element::kEmpty, new_idx);
@@ -158,8 +157,8 @@ void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
         hash ^= to_local_hash(flat_size, Element::kAgent, new_idx);
         hash ^= to_local_hash(flat_size, Element::kEmpty, agent_idx);
         // Move
-        grid[new_idx] = Element::kAgent;
-        grid[agent_idx] = Element::kEmpty;
+        grid.at(new_idx) = Element::kAgent;
+        grid.at(agent_idx) = Element::kEmpty;
         agent_idx = new_idx;
     }
 }
@@ -168,28 +167,28 @@ void CraftWorldGameState::HandleAgentUse() noexcept {
     for (const auto &action : kAllActions) {
         int neighbour_idx = IndexFromAction(agent_idx, action);
         // Nothing on this index to do something
-        if (grid[neighbour_idx] == Element::kEmpty) {
+        if (grid.at(neighbour_idx) == Element::kEmpty) {
             continue;
         }
 
         if (IsPrimitive(neighbour_idx)) {
             // Primitive elements on map are collectable, add to inventory
-            const Element el = grid[neighbour_idx];
+            const Element el = grid.at(neighbour_idx);
             if (el != Element::kGrass) {
                 AddToInventory(el, 1);
             }
             RemoveItemFromBoard(neighbour_idx);
             reward_signal |= static_cast<std::underlying_type_t<RewardCode>>(kPrimitiveRewardMap.at(el));
             break;
-        } else if (grid[neighbour_idx] == Element::kIron && HasItemInInventory(Element::kBronzePick)) {
+        } else if (grid.at(neighbour_idx) == Element::kIron && HasItemInInventory(Element::kBronzePick)) {
             // Iron ingot is special primitive where we need a cobble stone pickaxe to gather
-            const Element el = grid[neighbour_idx];
+            const Element el = grid.at(neighbour_idx);
             AddToInventory(el, 1);
             RemoveItemFromBoard(neighbour_idx);
             reward_signal |= static_cast<std::underlying_type_t<RewardCode>>(kPrimitiveRewardMap.at(el));
             break;
         } else if (IsWorkShop(neighbour_idx)) {
-            const Element el_workshop = grid[neighbour_idx];
+            const Element el_workshop = grid.at(neighbour_idx);
             for (const auto &[recipe_type, recipe_item] : kRecipeMap) {
                 // Skip recipes not legal at this workshop
                 const auto recipe_workshop = recipe_item.location;
@@ -287,9 +286,9 @@ auto CraftWorldGameState::get_observation() const noexcept -> std::vector<float>
     std::size_t i = 0;
     for (int r = 2; r < rows_obs - 2; ++r) {
         for (int c = 2; c < cols_obs - 2; ++c) {
-            const auto el = grid[i];
+            const auto el = grid.at(i);
             auto idx = (r * cols_obs) + c;
-            obs[static_cast<std::size_t>(el) * channel_length + idx] = 1;
+            obs.at(static_cast<std::size_t>(el) * channel_length + idx) = 1;
             ++i;
         }
     }
@@ -298,44 +297,44 @@ auto CraftWorldGameState::get_observation() const noexcept -> std::vector<float>
     for (const auto &[inv_el, inv_count] : inventory) {
         switch (inv_el) {
             case Element::kWood:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 0] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 0] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 0) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 0) = 0;
                 if (inv_count > 1) {
-                    obs[static_cast<std::size_t>(inv_el) * channel_length + 1] = 1;
-                    obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 1] = 0;
+                    obs.at(static_cast<std::size_t>(inv_el) * channel_length + 1) = 1;
+                    obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 1) = 0;
                 }
                 break;
             case Element::kCopper:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 2] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 2] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 2) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 2) = 0;
                 break;
             case Element::kTin:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 3] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 3] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 3) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 3) = 0;
                 break;
             case Element::kIron:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 4] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 4] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 4) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 4) = 0;
                 break;
             case Element::kStick:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 5] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 5] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 5) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 5) = 0;
                 if (inv_count > 1) {
-                    obs[static_cast<std::size_t>(inv_el) * channel_length + 6] = 1;
-                    obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 6] = 0;
+                    obs.at(static_cast<std::size_t>(inv_el) * channel_length + 6) = 1;
+                    obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 6) = 0;
                 }
                 break;
             case Element::kBronzeBar:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 7] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 7] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 7) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 7) = 0;
                 break;
             case Element::kBronzePick:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 8] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 8] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 8) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 8) = 0;
                 break;
             case Element::kIronPick:
-                obs[static_cast<std::size_t>(inv_el) * channel_length + 9] = 1;
-                obs[static_cast<std::size_t>(Element::kEmpty) * channel_length + 9] = 0;
+                obs.at(static_cast<std::size_t>(inv_el) * channel_length + 9) = 1;
+                obs.at(static_cast<std::size_t>(Element::kEmpty) * channel_length + 9) = 0;
                 break;
             default:
                 break;
@@ -443,7 +442,7 @@ auto CraftWorldGameState::get_indices(Element element) const noexcept -> std::ve
     assert(is_valid_element(element));
     std::vector<int> indices;
     for (int index = 0; index < rows * cols; ++index) {
-        if (grid[index] == element) {
+        if (grid.at(index) == element) {
             indices.push_back(index);
         }
     }
@@ -504,15 +503,15 @@ auto CraftWorldGameState::InBounds(int index, Action action) const noexcept -> b
 }
 
 auto CraftWorldGameState::IsWorkShop(int index) const noexcept -> bool {
-    return kWorkShops.find(grid[static_cast<std::size_t>(index)]) != kWorkShops.end();
+    return kWorkShops.find(grid.at(static_cast<std::size_t>(index))) != kWorkShops.end();
 }
 
 auto CraftWorldGameState::IsPrimitive(int index) const noexcept -> bool {
-    return kPrimitives.find(grid[static_cast<std::size_t>(index)]) != kPrimitives.end();
+    return kPrimitives.find(grid.at(static_cast<std::size_t>(index))) != kPrimitives.end();
 }
 
 auto CraftWorldGameState::IsItem(int index, Element element) const noexcept -> bool {
-    return grid[static_cast<std::size_t>(index)] == element;
+    return grid.at(static_cast<std::size_t>(index)) == element;
 }
 
 auto CraftWorldGameState::HasItemInInventory(Element element, int min_count) const noexcept -> bool {
@@ -523,13 +522,13 @@ void CraftWorldGameState::RemoveFromInventory(Element element, int count) noexce
     // Caller needs to verify that we can remove from inventory
     // Decrement item `count` times and change game state hash
     assert(inventory.find(element) != inventory.end());
-    assert(inventory[element] >= count);
+    assert(inventory.at(element) >= count);
     int flat_size = rows * cols;
     for (int i = 0; i < count; ++i) {
-        hash ^= to_local_inventory_hash(flat_size, element, inventory[element]);
-        --inventory[element];
+        hash ^= to_local_inventory_hash(flat_size, element, inventory.at(element));
+        --inventory.at(element);
     }
-    if (inventory[element] <= 0) {
+    if (inventory.at(element) <= 0) {
         inventory.erase(element);
     }
 }
@@ -543,8 +542,8 @@ void CraftWorldGameState::AddToInventory(Element element, int count) noexcept {
         std::exit(1);
     }
     for (int i = 0; i < count; ++i) {
-        ++inventory[element];
-        hash ^= to_local_inventory_hash(flat_size, element, inventory[element]);
+        ++inventory.at(element);
+        hash ^= to_local_inventory_hash(flat_size, element, inventory.at(element));
     }
 }
 
