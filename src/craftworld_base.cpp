@@ -542,7 +542,7 @@ void CraftWorldGameState::AddToInventory(Element element, int count) noexcept {
         std::exit(1);
     }
     for (int i = 0; i < count; ++i) {
-        ++inventory.at(element);
+        ++inventory[element];
         hash ^= to_local_inventory_hash(flat_size, element, inventory.at(element));
     }
 }
