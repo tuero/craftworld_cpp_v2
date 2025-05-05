@@ -1,7 +1,6 @@
 
 #include "craftworld_base.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <sstream>
 #include <type_traits>
@@ -28,17 +27,6 @@ constexpr uint64_t SPLIT64_S3 = 31;
 constexpr uint64_t SPLIT64_C1 = 0x9E3779B97f4A7C15;
 constexpr uint64_t SPLIT64_C2 = 0xBF58476D1CE4E5B9;
 constexpr uint64_t SPLIT64_C3 = 0x94D049BB133111EB;
-
-// https://en.wikipedia.org/wiki/Xorshift
-// Portable RNG Seed
-// NOLINTBEGIN
-auto splitmix64(uint64_t seed) noexcept -> uint64_t {
-    uint64_t result = seed + SPLIT64_C1;
-    result = (result ^ (result >> SPLIT64_S1)) * SPLIT64_C2;
-    result = (result ^ (result >> SPLIT64_S2)) * SPLIT64_C3;
-    return result ^ (result >> SPLIT64_S3);
-}
-// NOLINTEND
 
 template <class E>
 constexpr inline auto to_underlying(E e) noexcept -> std::underlying_type_t<E> {
@@ -539,11 +527,6 @@ void CraftWorldGameState::RemoveFromInventory(Element element, int count) noexce
 void CraftWorldGameState::AddToInventory(Element element, int count) noexcept {
     // Increment item `count` times and change game state hash
     int flat_size = rows * cols;
-    assert(element != Element::kEmpty);
-    if (element == Element::kEmpty) {
-        std::cout << "eerr" << std::endl;
-        std::exit(1);
-    }
     for (int i = 0; i < count; ++i) {
         ++inventory[element];
         hash ^= to_local_inventory_hash(flat_size, element, inventory.at(element));
