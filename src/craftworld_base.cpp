@@ -165,6 +165,9 @@ void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
 
 void CraftWorldGameState::HandleAgentUse() noexcept {
     for (const auto &action : kAllActions) {
+        if (!InBounds(agent_idx, action)) {
+            continue;
+        }
         int neighbour_idx = IndexFromAction(agent_idx, action);
         // Nothing on this index to do something
         if (grid.at(neighbour_idx) == Element::kEmpty) {
