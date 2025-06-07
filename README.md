@@ -10,7 +10,7 @@ Andreas, J., Klein, D. &amp; Levine, S.. (2017). Modular Multitask Reinforcement
 include(FetchContent)
 # ...
 FetchContent_Declare(craftworld
-    GIT_REPOSITORY https://github.com/tuero/craftworld_cpp.git
+    GIT_REPOSITORY https://github.com/tuero/craftworld_cpp_v2.git
     GIT_TAG master
 )
 
@@ -25,6 +25,23 @@ link_libraries(craftworld)
 add_subdirectory(external/craftworld_cpp)
 link_libraries(craftworld)
 ```
+
+## Installing Python Bindings
+```shell
+git clone https://github.com/tuero/craftworld_cpp_v2.git
+pip install ./craftworld_cpp_v2
+```
+
+If you get a `GLIBCXX_3.4.XX not found` error at runtime, 
+then you most likely have an older `libstdc++` in your virtual environment `lib/` 
+which is taking presidence over your system version.
+Either correct your `$PATH`, or update your virtual environment `libstdc++`.
+
+For example, if using anaconda
+```shell
+conda install conda-forge::libstdcxx-ng
+```
+
 
 ## Generate Levels
 The levelset generator will generate a curriculum of levels to gather the gem ring:
