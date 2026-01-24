@@ -10,7 +10,7 @@ const std::unordered_map<std::string, Action> ActionMap{
     {"w", Action::kUp}, {"d", Action::kRight}, {"s", Action::kDown}, {"a", Action::kLeft}, {"e", Action::kUse},
 };
 
-void print_state(const CraftWorldGameState &state) {
+void print_state(const CraftWorldGameState& state) {
     std::cout << state << std::endl;
     std::cout << state.get_hash() << std::endl;
     const auto obs = state.get_observation();
@@ -27,6 +27,9 @@ void print_state(const CraftWorldGameState &state) {
                 }
             }
             std::cout << std::setfill('0') << std::setw(2) << idx << " ";
+            if (count != 1) {
+                std::cout << "err " << idx << " " << count << std::endl;
+            }
         }
         std::cout << std::endl;
     }
