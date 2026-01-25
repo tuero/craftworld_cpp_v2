@@ -2,9 +2,11 @@
 #define CRAFTWORLD_BASE_H_
 
 #include <array>
+#include <format>
 #include <iostream>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
@@ -34,11 +36,11 @@ public:
         std::unordered_map<int, int> inventory;
     };
 
-    CraftWorldGameState(const std::string &board_str);
-    CraftWorldGameState(InternalState &&internal_state);
+    CraftWorldGameState(const std::string& board_str);
+    CraftWorldGameState(InternalState&& internal_state);
 
-    auto operator==(const CraftWorldGameState &other) const noexcept -> bool;
-    auto operator!=(const CraftWorldGameState &other) const noexcept -> bool;
+    auto operator==(const CraftWorldGameState& other) const noexcept -> bool;
+    auto operator!=(const CraftWorldGameState& other) const noexcept -> bool;
 
     static inline std::string name = "craftworld";
 
@@ -142,16 +144,16 @@ public:
      */
     [[nodiscard]] auto get_indices(Element element) const noexcept -> std::vector<int>;
 
-    friend auto operator<<(std::ostream &os, const CraftWorldGameState &state) -> std::ostream &;
+    friend auto operator<<(std::ostream& os, const CraftWorldGameState& state) -> std::ostream&;
 
     [[nodiscard]] auto pack() const -> InternalState {
         std::vector<int> _grid;
         std::unordered_map<int, int> _inventory;
         _grid.reserve(grid.size());
-        for (const auto &el : grid) {
+        for (const auto& el : grid) {
             _grid.push_back(static_cast<int>(el));
         }
-        for (const auto &[el, count] : inventory) {
+        for (const auto& [el, count] : inventory) {
             _inventory[static_cast<int>(el)] = count;
         }
         return {
@@ -191,5 +193,14 @@ private:
 };
 
 }    // namespace craftworld
+
+template <>
+struct std::formatter<craftworld::CraftWorldGameState> : std::formatter<std::string> {
+    auto format(craftworld::CraftWorldGameState s, format_context& ctx) const {
+        std::ostringstream oss;
+        oss << s;
+        return formatter<string>::format(std::format("{}", oss.str()), ctx);
+    }
+};
 
 #endif    // CRAFTWORLD_BASE_H_

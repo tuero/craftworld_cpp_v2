@@ -34,7 +34,7 @@ constexpr inline auto to_underlying(E e) noexcept -> std::underlying_type_t<E> {
 }
 
 auto to_local_hash(int flat_size, Element el, int offset) noexcept -> uint64_t {
-    uint64_t seed = (flat_size * to_underlying(el)) + offset;
+    auto seed = static_cast<uint64_t>((flat_size * to_underlying(el)) + offset);
     uint64_t result = seed + SPLIT64_C1;
     result = (result ^ (result >> SPLIT64_S1)) * SPLIT64_C2;
     result = (result ^ (result >> SPLIT64_S2)) * SPLIT64_C3;
@@ -42,7 +42,7 @@ auto to_local_hash(int flat_size, Element el, int offset) noexcept -> uint64_t {
 }
 
 auto to_local_inventory_hash(int flat_size, Element el, int count) noexcept -> uint64_t {
-    uint64_t seed = (flat_size * kNumElements) + (flat_size * to_underlying(el)) + count;    // NOLINT(*-magic-numbers)
+    auto seed = static_cast<uint64_t>((flat_size * kNumElements) + (flat_size * to_underlying(el)) + count);
     uint64_t result = seed + SPLIT64_C1;
     result = (result ^ (result >> SPLIT64_S1)) * SPLIT64_C2;
     result = (result ^ (result >> SPLIT64_S2)) * SPLIT64_C3;
@@ -50,7 +50,7 @@ auto to_local_inventory_hash(int flat_size, Element el, int count) noexcept -> u
 }
 }    // namespace
 
-CraftWorldGameState::CraftWorldGameState(const std::string &board_str) {
+CraftWorldGameState::CraftWorldGameState(const std::string& board_str) {
     std::stringstream board_ss(board_str);
     std::string segment;
     std::vector<std::string> seglist;
@@ -93,11 +93,11 @@ CraftWorldGameState::CraftWorldGameState(const std::string &board_str) {
     int flat_size = rows * cols;
     hash = 0;
     for (int i = 0; i < flat_size; ++i) {
-        hash ^= to_local_hash(flat_size, grid.at(i), i);
+        hash ^= to_local_hash(flat_size, grid.at(static_cast<std::size_t>(i)), i);
     }
 }
 
-CraftWorldGameState::CraftWorldGameState(InternalState &&internal_state)
+CraftWorldGameState::CraftWorldGameState(InternalState&& internal_state)
     : rows(internal_state.rows),
       cols(internal_state.cols),
       agent_idx(internal_state.agent_idx),
@@ -105,31 +105,31 @@ CraftWorldGameState::CraftWorldGameState(InternalState &&internal_state)
       reward_signal(internal_state.reward_signal),
       hash(internal_state.hash) {
     grid.clear();
-    for (const auto &el : internal_state.grid) {
+    for (const auto& el : internal_state.grid) {
         grid.push_back(static_cast<Element>(el));
     }
     inventory.clear();
-    for (const auto &[el, count] : internal_state.inventory) {
+    for (const auto& [el, count] : internal_state.inventory) {
         inventory[static_cast<Element>(el)] = count;
     }
 }
 
-auto CraftWorldGameState::operator==(const CraftWorldGameState &other) const noexcept -> bool {
+auto CraftWorldGameState::operator==(const CraftWorldGameState& other) const noexcept -> bool {
     return rows == other.rows && cols == other.cols && agent_idx == other.agent_idx && grid == other.grid &&
            goal == other.goal && inventory == other.inventory;
 }
 
-auto CraftWorldGameState::operator!=(const CraftWorldGameState &other) const noexcept -> bool {
+auto CraftWorldGameState::operator!=(const CraftWorldGameState& other) const noexcept -> bool {
     return !(*this == other);
 }
 
 // ---------------------------------------------------------------------------
 
 void CraftWorldGameState::RemoveItemFromBoard(int index) noexcept {
-    Element el = grid.at(index);
+    Element el = grid.at(static_cast<std::size_t>(index));
     auto flat_size = rows * cols;
     hash ^= to_local_hash(flat_size, el, index);
-    grid.at(index) = Element::kEmpty;
+    grid.at(static_cast<std::size_t>(index)) = Element::kEmpty;
     hash ^= to_local_hash(flat_size, Element::kEmpty, index);
 }
 
@@ -137,7 +137,7 @@ void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
     // Move if in bound and empty tile
     auto new_idx = IndexFromAction(agent_idx, action);
     int flat_size = rows * cols;
-    if (InBounds(agent_idx, action) && grid.at(new_idx) == Element::kEmpty) {
+    if (InBounds(agent_idx, action) && grid.at(static_cast<std::size_t>(new_idx)) == Element::kEmpty) {
         // Undo hash
         hash ^= to_local_hash(flat_size, Element::kAgent, agent_idx);
         hash ^= to_local_hash(flat_size, Element::kEmpty, new_idx);
@@ -145,42 +145,43 @@ void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
         hash ^= to_local_hash(flat_size, Element::kAgent, new_idx);
         hash ^= to_local_hash(flat_size, Element::kEmpty, agent_idx);
         // Move
-        grid.at(new_idx) = Element::kAgent;
-        grid.at(agent_idx) = Element::kEmpty;
+        grid.at(static_cast<std::size_t>(new_idx)) = Element::kAgent;
+        grid.at(static_cast<std::size_t>(agent_idx)) = Element::kEmpty;
         agent_idx = new_idx;
     }
 }
 
 void CraftWorldGameState::HandleAgentUse() noexcept {
-    for (const auto &action : kAllActions) {
+    for (const auto& action : kAllActions) {
         if (!InBounds(agent_idx, action)) {
             continue;
         }
         int neighbour_idx = IndexFromAction(agent_idx, action);
         // Nothing on this index to do something
-        if (grid.at(neighbour_idx) == Element::kEmpty) {
+        if (grid.at(static_cast<std::size_t>(neighbour_idx)) == Element::kEmpty) {
             continue;
         }
 
         if (IsPrimitive(neighbour_idx)) {
             // Primitive elements on map are collectable, add to inventory
-            const Element el = grid.at(neighbour_idx);
+            const Element el = grid.at(static_cast<std::size_t>(neighbour_idx));
             if (el != Element::kGrass) {
                 AddToInventory(el, 1);
             }
             RemoveItemFromBoard(neighbour_idx);
             reward_signal |= static_cast<std::underlying_type_t<RewardCode>>(kPrimitiveRewardMap.at(el));
             break;
-        } else if (grid.at(neighbour_idx) == Element::kIron && HasItemInInventory(Element::kBronzePick)) {
+        } else if (grid.at(static_cast<std::size_t>(neighbour_idx)) == Element::kIron &&
+                   HasItemInInventory(Element::kBronzePick)) {
             // Iron ingot is special primitive where we need a cobble stone pickaxe to gather
-            const Element el = grid.at(neighbour_idx);
+            const Element el = grid.at(static_cast<std::size_t>(neighbour_idx));
             AddToInventory(el, 1);
             RemoveItemFromBoard(neighbour_idx);
             reward_signal |= static_cast<std::underlying_type_t<RewardCode>>(kPrimitiveRewardMap.at(el));
             break;
         } else if (IsWorkShop(neighbour_idx)) {
-            const Element el_workshop = grid.at(neighbour_idx);
-            for (const auto &[recipe_type, recipe_item] : kRecipeMap) {
+            const Element el_workshop = grid.at(static_cast<std::size_t>(neighbour_idx));
+            for (const auto& [recipe_type, recipe_item] : kRecipeMap) {
                 // Skip recipes not legal at this workshop
                 const auto recipe_workshop = recipe_item.location;
                 if (recipe_workshop != el_workshop) {
@@ -193,7 +194,7 @@ void CraftWorldGameState::HandleAgentUse() noexcept {
 
                 // Add crafted item and remove ingredients from inventory
                 AddToInventory(recipe_item.output, 1);
-                for (auto const &ingredient_item : recipe_item.inputs) {
+                for (auto const& ingredient_item : recipe_item.inputs) {
                     RemoveFromInventory(ingredient_item.element, ingredient_item.count);
                 }
                 reward_signal |=
@@ -243,31 +244,31 @@ auto CraftWorldGameState::observation_shape() const noexcept -> std::array<int, 
 }
 
 auto CraftWorldGameState::get_observation() const noexcept -> std::vector<float> {
-    const auto rows_obs = rows + 4;
-    const auto cols_obs = cols + 4;
-    const auto channel_length = rows_obs * cols_obs;
+    const auto rows_obs = static_cast<std::size_t>(rows + 4);
+    const auto cols_obs = static_cast<std::size_t>(cols + 4);
+    const auto channel_length = static_cast<std::size_t>(rows_obs * cols_obs);
 
     std::vector<float> obs(kNumElements * channel_length, 0);
 
     // Inner border is wall
-    for (int w = 1; w < cols_obs - 1; ++w) {
+    for (std::size_t w = 1; w < cols_obs - 1; ++w) {
         const auto channel = static_cast<std::size_t>(Element::kWall);
         obs[channel * channel_length + (1 * cols_obs + w)] = 1;
         obs[channel * channel_length + ((rows_obs - 2) * cols_obs + w)] = 1;
     }
-    for (int h = 1; h < rows_obs - 1; ++h) {
+    for (std::size_t h = 1; h < rows_obs - 1; ++h) {
         const auto channel = static_cast<std::size_t>(Element::kWall);
         obs[channel * channel_length + (h * cols_obs + 1)] = 1;
         obs[channel * channel_length + (h * cols_obs + (cols_obs - 2))] = 1;
     }
 
     // Outer border is empty (for now, dont forget to undo for inventory items)
-    for (int w = 0; w < cols_obs; ++w) {
+    for (std::size_t w = 0; w < cols_obs; ++w) {
         const auto channel = static_cast<std::size_t>(Element::kEmpty);
         obs[channel * channel_length + (0 * cols_obs + w)] = 1;
         obs[channel * channel_length + ((rows_obs - 1) * cols_obs + w)] = 1;
     }
-    for (int h = 1; h < rows_obs - 1; ++h) {
+    for (std::size_t h = 1; h < rows_obs - 1; ++h) {
         const auto channel = static_cast<std::size_t>(Element::kEmpty);
         obs[channel * channel_length + (h * cols_obs + 0)] = 1;
         obs[channel * channel_length + (h * cols_obs + (cols_obs - 1))] = 1;
@@ -275,8 +276,8 @@ auto CraftWorldGameState::get_observation() const noexcept -> std::vector<float>
 
     // Board environment + primitives + agent
     std::size_t i = 0;
-    for (int r = 2; r < rows_obs - 2; ++r) {
-        for (int c = 2; c < cols_obs - 2; ++c) {
+    for (std::size_t r = 2; r < rows_obs - 2; ++r) {
+        for (std::size_t c = 2; c < cols_obs - 2; ++c) {
             const auto el = grid.at(i);
             auto idx = (r * cols_obs) + c;
             obs.at(static_cast<std::size_t>(el) * channel_length + idx) = 1;
@@ -285,7 +286,7 @@ auto CraftWorldGameState::get_observation() const noexcept -> std::vector<float>
     }
 
     // Inventory (fill around the border)
-    for (const auto &[inv_el, inv_count] : inventory) {
+    for (const auto& [inv_el, inv_count] : inventory) {
         switch (inv_el) {
             case Element::kWood:
                 obs.at(static_cast<std::size_t>(inv_el) * channel_length + 0) = 1;
@@ -337,7 +338,7 @@ auto CraftWorldGameState::get_observation() const noexcept -> std::vector<float>
 // Spite assets
 #include "assets_all.inc"
 namespace {
-void fill_sprite(std::vector<uint8_t> &img, const std::vector<uint8_t> &sprite_data, std::size_t h, std::size_t w,
+void fill_sprite(std::vector<uint8_t>& img, const std::vector<uint8_t>& sprite_data, std::size_t h, std::size_t w,
                  std::size_t cols) {
     const std::size_t img_idx_top_left = h * (SPRITE_DATA_LEN * cols) + (w * SPRITE_DATA_LEN_PER_ROW);
     for (std::size_t r = 0; r < SPRITE_HEIGHT; ++r) {
@@ -360,31 +361,31 @@ auto CraftWorldGameState::image_shape() const noexcept -> std::array<int, 3> {
 
 auto CraftWorldGameState::to_image() const noexcept -> std::vector<uint8_t> {
     // Pad board with black border
-    const auto rows_img = rows + 4;
-    const auto cols_img = cols + 4;
-    const auto channel_length = rows_img * cols_img;
+    const auto rows_img = static_cast<std::size_t>(rows + 4);
+    const auto cols_img = static_cast<std::size_t>(cols + 4);
+    const auto channel_length = static_cast<std::size_t>(rows_img * cols_img);
     std::vector<uint8_t> img(channel_length * SPRITE_DATA_LEN, 0);
 
     // Inner border is wall
-    for (int w = 1; w < cols_img - 1; ++w) {
+    for (std::size_t w = 1; w < cols_img - 1; ++w) {
         fill_sprite(img, img_asset_map.at(Element::kWall), 1, w, cols_img);
         fill_sprite(img, img_asset_map.at(Element::kWall), rows_img - 2, w, cols_img);
     }
-    for (int h = 1; h < rows_img - 1; ++h) {
+    for (std::size_t h = 1; h < rows_img - 1; ++h) {
         fill_sprite(img, img_asset_map.at(Element::kWall), h, 1, cols_img);
         fill_sprite(img, img_asset_map.at(Element::kWall), h, cols_img - 2, cols_img);
     }
 
     // Outer border is inventory
     std::vector<std::pair<std::size_t, std::size_t>> indices;
-    for (int w = 0; w < cols_img; ++w) {
+    for (std::size_t w = 0; w < cols_img; ++w) {
         indices.emplace_back(0, w);
     }
-    for (int w = 0; w < cols_img; ++w) {
+    for (std::size_t w = 0; w < cols_img; ++w) {
         indices.emplace_back(rows_img - 1, w);
     }
     std::size_t inv_idx = 0;
-    for (const auto &[inv_item, inv_count] : inventory) {
+    for (const auto& [inv_item, inv_count] : inventory) {
         for (int i = 0; i < inv_count; ++i) {
             fill_sprite(img, img_asset_map.at(inv_item), indices[inv_idx].first, indices[inv_idx].second, cols_img);
             ++inv_idx;
@@ -393,8 +394,8 @@ auto CraftWorldGameState::to_image() const noexcept -> std::vector<uint8_t> {
 
     // Reset of board is inside the border
     std::size_t board_idx = 0;
-    for (int h = 2; h < rows_img - 2; ++h) {
-        for (int w = 2; w < cols_img - 2; ++w) {
+    for (std::size_t h = 2; h < rows_img - 2; ++h) {
+        for (std::size_t w = 2; w < cols_img - 2; ++w) {
             const auto el = grid[board_idx];
             fill_sprite(img, img_asset_map.at(el), h, w, cols_img);
             ++board_idx;
@@ -433,14 +434,14 @@ auto CraftWorldGameState::get_indices(Element element) const noexcept -> std::ve
     assert(is_valid_element(element));
     std::vector<int> indices;
     for (int index = 0; index < rows * cols; ++index) {
-        if (grid.at(index) == element) {
+        if (grid.at(static_cast<std::size_t>(index)) == element) {
             indices.push_back(index);
         }
     }
     return indices;
 }
 
-std::ostream &operator<<(std::ostream &os, const CraftWorldGameState &state) {
+std::ostream& operator<<(std::ostream& os, const CraftWorldGameState& state) {
     for (int w = 0; w < state.cols + 2; ++w) {
         os << "-";
     }
@@ -449,7 +450,7 @@ std::ostream &operator<<(std::ostream &os, const CraftWorldGameState &state) {
         os << "|";
         for (int w = 0; w < state.cols; ++w) {
             auto idx = h * state.cols + w;
-            os << kElementToSymbolMap.at(state.grid[idx]);
+            os << kElementToSymbolMap.at(state.grid[static_cast<std::size_t>(idx)]);
         }
         os << "|" << std::endl;
     }
@@ -459,7 +460,7 @@ std::ostream &operator<<(std::ostream &os, const CraftWorldGameState &state) {
     os << std::endl;
     os << "Goal: " << kElementToNameMap.at(state.goal) << std::endl;
     os << "Inventory: ";
-    for (const auto &[inv_item, inv_count] : state.inventory) {
+    for (const auto& [inv_item, inv_count] : state.inventory) {
         os << "(" << kElementToNameMap.at(inv_item) << ", " << inv_count << ") ";
     }
     return os;
@@ -487,7 +488,7 @@ auto CraftWorldGameState::IndexFromAction(int index, Action action) const noexce
 auto CraftWorldGameState::InBounds(int index, Action action) const noexcept -> bool {
     int col = index % cols;
     int row = (index - col) / cols;
-    const std::pair<int, int> &offsets = kDirectionOffsets.at(static_cast<std::size_t>(action));
+    const std::pair<int, int>& offsets = kDirectionOffsets.at(static_cast<std::size_t>(action));
     col += offsets.first;
     row += offsets.second;
     return col >= 0 && col < cols && row >= 0 && row < rows;
@@ -534,7 +535,7 @@ void CraftWorldGameState::AddToInventory(Element element, int count) noexcept {
 }
 
 auto CraftWorldGameState::CanCraftItem(RecipeItem recipe_item) const noexcept -> bool {
-    for (auto const &ingredient_item : recipe_item.inputs) {
+    for (auto const& ingredient_item : recipe_item.inputs) {
         if (!HasItemInInventory(ingredient_item.element, ingredient_item.count)) {
             return false;
         }

@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.23)
 
-project(craftworld VERSION 1.0.0)
+project(craftworld VERSION 1.0.1)
 
 option(BUILD_PYTHON_MODULE "Build the python library wrapper" OFF)
 
@@ -30,7 +30,7 @@ set_target_properties(craftworld PROPERTIES
 )
 target_include_directories(
     craftworld PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
-target_compile_features(craftworld PUBLIC cxx_std_17)
+target_compile_features(craftworld PUBLIC cxx_std_20)
 target_sources(craftworld PRIVATE ${CRAFTWORLD_SOURCES})
 
 

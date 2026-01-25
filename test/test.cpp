@@ -11,7 +11,7 @@ const std::unordered_map<std::string, Action> ActionMap{
 };
 
 void print_state(const CraftWorldGameState& state) {
-    std::cout << state << std::endl;
+    std::cout << std::format("{}", state) << std::endl;
     std::cout << state.get_hash() << std::endl;
     const auto obs = state.get_observation();
     const auto [c, h, w] = state.observation_shape();
@@ -21,7 +21,7 @@ void print_state(const CraftWorldGameState& state) {
             int idx = -1;
             int count = 0;
             for (int _c = 0; _c < c; ++_c) {
-                if (obs[_c * (h * w) + _h * w + _w] == 1) {
+                if (obs[static_cast<std::size_t>(_c * (h * w) + _h * w + _w)] == 1) {
                     idx = _c;
                     ++count;
                 }
