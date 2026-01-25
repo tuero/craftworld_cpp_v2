@@ -1,11 +1,9 @@
 
-#include "craftworld_base.h"
+#include <craftworld/craftworld.h>
 
 #include <cstdint>
 #include <sstream>
 #include <type_traits>
-
-#include "definitions.h"
 
 namespace craftworld {
 

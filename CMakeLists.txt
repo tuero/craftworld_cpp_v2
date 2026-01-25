@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.23)
 
-project(craftworld VERSION 1.0.1)
+project(craftworld VERSION 1.0.2)
 
 option(BUILD_PYTHON_MODULE "Build the python library wrapper" OFF)
 
@@ -15,9 +15,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Sources
 set(CRAFTWORLD_SOURCES
-    src/definitions.h
+    include/craftworld/craftworld.h
+    include/craftworld/craftworld_base.h
+    include/craftworld/definitions.h
     src/craftworld_base.cpp 
-    src/craftworld_base.h 
 )
 
 # CPP library

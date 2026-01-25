@@ -1,6 +1,8 @@
 #ifndef CRAFTWORLD_BASE_H_
 #define CRAFTWORLD_BASE_H_
 
+#include <craftworld/definitions.h>
+
 #include <array>
 #include <format>
 #include <iostream>
@@ -9,8 +11,6 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
-
-#include "definitions.h"
 
 namespace craftworld {
 
