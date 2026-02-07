@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.23)
 
-project(craftworld VERSION 1.0.2)
+project(craftworld VERSION 1.0.3)
 
 option(BUILD_PYTHON_MODULE "Build the python library wrapper" OFF)
 

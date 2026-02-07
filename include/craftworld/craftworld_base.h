@@ -196,7 +196,7 @@ private:
 
 template <>
 struct std::formatter<craftworld::CraftWorldGameState> : std::formatter<std::string> {
-    auto format(craftworld::CraftWorldGameState s, format_context& ctx) const {
+    auto format(const craftworld::CraftWorldGameState& s, format_context& ctx) const {
         std::ostringstream oss;
         oss << s;
         return formatter<string>::format(std::format("{}", oss.str()), ctx);
