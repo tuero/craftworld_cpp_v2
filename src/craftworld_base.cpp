@@ -49,7 +49,7 @@ CraftWorldGameState::CraftWorldGameState(const std::string& board_str) {
     // Parse grid
     for (std::size_t i = 3; i < seglist.size(); ++i) {
         int el_idx = std::stoi(seglist[i]);
-        if (el_idx < 0 || el_idx > kNumElements) {
+        if (el_idx < 0 || el_idx >= kNumElements) {
             throw std::invalid_argument(std::string("Unknown element type: ") + seglist[i]);
         }
 
