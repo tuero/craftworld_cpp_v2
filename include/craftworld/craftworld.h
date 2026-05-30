@@ -3,5 +3,6 @@
 
 #include <craftworld/craftworld_base.h>
 #include <craftworld/definitions.h>
+#include <craftworld/zobrist.h>
 
 #endif    // CRAFTWORLD_H_

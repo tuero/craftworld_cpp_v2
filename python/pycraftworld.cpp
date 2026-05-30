@@ -69,24 +69,25 @@ PYBIND11_MODULE(pycraftworld, m) {
         .value("kRewardCodeUseAtFurnace", cw::RewardCode::kRewardCodeUseAtFurnace);
 
     py::class_<T>(m, "CraftWorldGameState")
-        .def(py::init<const std::string &>())
+        .def(py::init<const std::string&>())
         .def_readonly_static("name", &T::name)
         .def_readonly_static("num_actions", &craftworld::kNumActions)
         .def(py::self == py::self)    // NOLINT (misc-redundant-expression)
         .def(py::self != py::self)    // NOLINT (misc-redundant-expression)
-        .def("__hash__", [](const T &self) { return self.get_hash(); })
-        .def("__copy__", [](const T &self) { return T(self); })
-        .def("__deepcopy__", [](const T &self, py::dict) { return T(self); })
+        .def("__hash__", [](const T& self) { return self.get_hash(); })
+        .def("__copy__", [](const T& self) { return T(self); })
+        .def("__deepcopy__", [](const T& self, py::dict) { return T(self); })
         .def("__repr__",
-             [](const T &self) {
+             [](const T& self) {
                  std::stringstream stream;
                  stream << self;
                  return stream.str();
              })
         .def(py::pickle(
-            [](const T &self) {    // __getstate__
+            [](const T& self) {    // __getstate__
                 auto s = self.pack();
-                return py::make_tuple(s.rows, s.cols, s.agent_idx, s.grid, s.goal, s.reward_signal, s.hash,
+                const auto hash_tuple = py::make_tuple(s.hash.word[0], s.hash.word[1], s.hash.word[2], s.hash.word[3]);
+                return py::make_tuple(s.rows, s.cols, s.agent_idx, s.grid, s.goal, s.reward_signal, hash_tuple,
                                       s.inventory);
             },
             [](py::tuple t) -> T {    // __setstate__
@@ -94,18 +95,25 @@ PYBIND11_MODULE(pycraftworld, m) {
                     throw std::runtime_error("Invalid state");
                 }
                 T::InternalState s;
-                s.rows = t[0].cast<int>();                                  // NOLINT(*-magic-numbers)
-                s.cols = t[1].cast<int>();                                  // NOLINT(*-magic-numbers)
-                s.agent_idx = t[2].cast<int>();                             // NOLINT(*-magic-numbers)
-                s.grid = t[3].cast<std::vector<int>>();                     // NOLINT(*-magic-numbers)
-                s.goal = t[4].cast<int>();                                  // NOLINT(*-magic-numbers)
-                s.reward_signal = t[5].cast<uint64_t>();                    // NOLINT(*-magic-numbers)
-                s.hash = t[6].cast<uint64_t>();                             // NOLINT(*-magic-numbers)
+                s.rows = t[0].cast<int>();                  // NOLINT(*-magic-numbers)
+                s.cols = t[1].cast<int>();                  // NOLINT(*-magic-numbers)
+                s.agent_idx = t[2].cast<int>();             // NOLINT(*-magic-numbers)
+                s.grid = t[3].cast<std::vector<int>>();     // NOLINT(*-magic-numbers)
+                s.goal = t[4].cast<int>();                  // NOLINT(*-magic-numbers)
+                s.reward_signal = t[5].cast<uint64_t>();    // NOLINT(*-magic-numbers)
+                const auto hash_tuple = t[6].cast<py::tuple>();
+                if (hash_tuple.size() != 4) {
+                    throw std::runtime_error("Invalid hash tuple state");
+                }
+                s.hash.word[0] = hash_tuple[0].cast<uint64_t>();
+                s.hash.word[1] = hash_tuple[1].cast<uint64_t>();
+                s.hash.word[2] = hash_tuple[2].cast<uint64_t>();
+                s.hash.word[3] = hash_tuple[3].cast<uint64_t>();
                 s.inventory = t[7].cast<std::unordered_map<int, int>>();    // NOLINT(*-magic-numbers)
                 return {std::move(s)};
             }))
         .def("apply_action",
-             [](T &self, int action) {
+             [](T& self, int action) {
                  if (action < 0 || action >= T::action_space_size()) {
                      throw std::invalid_argument("Invalid action.");
                  }
@@ -115,18 +123,23 @@ PYBIND11_MODULE(pycraftworld, m) {
         .def("is_terminal", &T::is_solution)
         .def("observation_shape", &T::observation_shape)
         .def("get_observation",
-             [](const T &self) {
+             [](const T& self) {
                  py::array_t<float> out = py::cast(self.get_observation());
                  return out.reshape(self.observation_shape());
              })
         .def("image_shape", &T::image_shape)
         .def("to_image",
-             [](T &self) {
+             [](T& self) {
                  py::array_t<uint8_t> out = py::cast(self.to_image());
                  const auto obs_shape = self.observation_shape();
                  return out.reshape({static_cast<py::ssize_t>(obs_shape[1] * craftworld::SPRITE_HEIGHT),
                                      static_cast<py::ssize_t>(obs_shape[2] * craftworld::SPRITE_WIDTH),
                                      static_cast<py::ssize_t>(craftworld::SPRITE_CHANNELS)});
+             })
+        .def("get_hash256",
+             [](const T& self) {
+                 const auto hash = self.get_hash256();
+                 return py::make_tuple(hash.word[0], hash.word[1], hash.word[2], hash.word[3]);
              })
         .def("get_reward_signal", &T::get_reward_signal)
         .def("get_agent_index", &T::get_agent_index)

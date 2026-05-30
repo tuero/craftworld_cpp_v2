@@ -2,6 +2,7 @@
 #define CRAFTWORLD_BASE_H_
 
 #include <craftworld/definitions.h>
+#include <craftworld/zobrist.h>
 
 #include <array>
 #include <format>
@@ -32,7 +33,7 @@ public:
         std::vector<int> grid;
         int goal;
         uint64_t reward_signal = 0;
-        uint64_t hash = 0;
+        Zobrist256 hash = {};
         std::unordered_map<int, int> inventory;
     };
 
@@ -120,6 +121,12 @@ public:
     [[nodiscard]] auto get_hash() const noexcept -> uint64_t;
 
     /**
+     * Get the 256-bit hash representation for the current state.
+     * @return hash value
+     */
+    [[nodiscard]] auto get_hash256() const noexcept -> Zobrist256;
+
+    /**
      * Add the given element to the inventory
      */
     void add_to_inventory(Element element, int count);
@@ -188,7 +195,7 @@ private:
     std::vector<Element> grid;
     Element goal;
     uint64_t reward_signal = 0;
-    uint64_t hash = 0;
+    Zobrist256 hash = {};
     std::unordered_map<Element, int> inventory;    // Inventory of items
 };
 

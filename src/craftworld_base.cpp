@@ -8,6 +8,7 @@
 namespace craftworld {
 
 namespace {
+
 [[noreturn]] inline void unreachable() {
     // Uses compiler specific extensions if possible.
     // Even if no extension is used, undefined behavior is still raised by
@@ -19,33 +20,6 @@ namespace {
 #endif
 }
 
-constexpr uint64_t SPLIT64_S1 = 30;
-constexpr uint64_t SPLIT64_S2 = 27;
-constexpr uint64_t SPLIT64_S3 = 31;
-constexpr uint64_t SPLIT64_C1 = 0x9E3779B97f4A7C15;
-constexpr uint64_t SPLIT64_C2 = 0xBF58476D1CE4E5B9;
-constexpr uint64_t SPLIT64_C3 = 0x94D049BB133111EB;
-
-template <class E>
-constexpr inline auto to_underlying(E e) noexcept -> std::underlying_type_t<E> {
-    return static_cast<std::underlying_type_t<E>>(e);
-}
-
-auto to_local_hash(int flat_size, Element el, int offset) noexcept -> uint64_t {
-    auto seed = static_cast<uint64_t>((flat_size * to_underlying(el)) + offset);
-    uint64_t result = seed + SPLIT64_C1;
-    result = (result ^ (result >> SPLIT64_S1)) * SPLIT64_C2;
-    result = (result ^ (result >> SPLIT64_S2)) * SPLIT64_C3;
-    return result ^ (result >> SPLIT64_S3);
-}
-
-auto to_local_inventory_hash(int flat_size, Element el, int count) noexcept -> uint64_t {
-    auto seed = static_cast<uint64_t>((flat_size * kNumElements) + (flat_size * to_underlying(el)) + count);
-    uint64_t result = seed + SPLIT64_C1;
-    result = (result ^ (result >> SPLIT64_S1)) * SPLIT64_C2;
-    result = (result ^ (result >> SPLIT64_S2)) * SPLIT64_C3;
-    return result ^ (result >> SPLIT64_S3);
-}
 }    // namespace
 
 CraftWorldGameState::CraftWorldGameState(const std::string& board_str) {
@@ -89,9 +63,9 @@ CraftWorldGameState::CraftWorldGameState(const std::string& board_str) {
 
     // Set initial hash for game world
     int flat_size = rows * cols;
-    hash = 0;
+    hash = {};
     for (int i = 0; i < flat_size; ++i) {
-        hash ^= to_local_hash(flat_size, grid.at(static_cast<std::size_t>(i)), i);
+        hash ^= to_local_hash<4>(flat_size, grid.at(static_cast<std::size_t>(i)), i);
     }
 }
 
@@ -126,9 +100,9 @@ auto CraftWorldGameState::operator!=(const CraftWorldGameState& other) const noe
 void CraftWorldGameState::RemoveItemFromBoard(int index) noexcept {
     Element el = grid.at(static_cast<std::size_t>(index));
     auto flat_size = rows * cols;
-    hash ^= to_local_hash(flat_size, el, index);
+    hash ^= to_local_hash<4>(flat_size, el, index);
     grid.at(static_cast<std::size_t>(index)) = Element::kEmpty;
-    hash ^= to_local_hash(flat_size, Element::kEmpty, index);
+    hash ^= to_local_hash<4>(flat_size, Element::kEmpty, index);
 }
 
 void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
@@ -137,11 +111,11 @@ void CraftWorldGameState::HandleAgentMovement(Action action) noexcept {
     int flat_size = rows * cols;
     if (InBounds(agent_idx, action) && grid.at(static_cast<std::size_t>(new_idx)) == Element::kEmpty) {
         // Undo hash
-        hash ^= to_local_hash(flat_size, Element::kAgent, agent_idx);
-        hash ^= to_local_hash(flat_size, Element::kEmpty, new_idx);
+        hash ^= to_local_hash<4>(flat_size, Element::kAgent, agent_idx);
+        hash ^= to_local_hash<4>(flat_size, Element::kEmpty, new_idx);
         // Change hash
-        hash ^= to_local_hash(flat_size, Element::kAgent, new_idx);
-        hash ^= to_local_hash(flat_size, Element::kEmpty, agent_idx);
+        hash ^= to_local_hash<4>(flat_size, Element::kAgent, new_idx);
+        hash ^= to_local_hash<4>(flat_size, Element::kEmpty, agent_idx);
         // Move
         grid.at(static_cast<std::size_t>(new_idx)) = Element::kAgent;
         grid.at(static_cast<std::size_t>(agent_idx)) = Element::kEmpty;
@@ -407,6 +381,10 @@ auto CraftWorldGameState::get_reward_signal() const noexcept -> uint64_t {
 }
 
 auto CraftWorldGameState::get_hash() const noexcept -> uint64_t {
+    return hash.low64();
+}
+
+auto CraftWorldGameState::get_hash256() const noexcept -> Zobrist256 {
     return hash;
 }
 
@@ -515,7 +493,7 @@ void CraftWorldGameState::RemoveFromInventory(Element element, int count) noexce
     assert(inventory.at(element) >= count);
     int flat_size = rows * cols;
     for (int i = 0; i < count; ++i) {
-        hash ^= to_local_inventory_hash(flat_size, element, inventory.at(element));
+        hash ^= to_local_inventory_hash<4>(flat_size, element, inventory.at(element));
         --inventory.at(element);
     }
     if (inventory.at(element) <= 0) {
@@ -528,7 +506,7 @@ void CraftWorldGameState::AddToInventory(Element element, int count) noexcept {
     int flat_size = rows * cols;
     for (int i = 0; i < count; ++i) {
         ++inventory[element];
-        hash ^= to_local_inventory_hash(flat_size, element, inventory.at(element));
+        hash ^= to_local_inventory_hash<4>(flat_size, element, inventory.at(element));
     }
 }
 
